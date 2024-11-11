@@ -1,8 +1,8 @@
 # This script is set up to process Illumina AAV Amplicon Screening Data based on
 #     experiments performed by the Davidson Lab
 
-# NOTE: The nucleic acid sequence encoding the random hepatamer peptide inserts in
-#       the PM-AAVs is referred to throughout this script using the term "Barcode"
+# NOTE on Nomenclature: The nucleic acid sequence encoding the random heptamer peptide 
+#     inserts in the PM-AAVs is referred to throughout this script using the term "Barcode"
 
 ################################
 ##  Loading Dependencies      ##
