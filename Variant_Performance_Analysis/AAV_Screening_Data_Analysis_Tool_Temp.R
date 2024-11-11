@@ -77,9 +77,6 @@ Save_File_Tag = "Your_Experiment_ID"
 
 Data_File <- "Full_Path_to_Text_File_Containing_List_of_Counts_Files_to_be_Analyzed"
 
-Data_File <- "C:/Users/lewandowsb/OneDrive - Children's Hospital of Philadelphia/Desktop/Broad ICV Analysis/Round 2/Testset_Temp/SampleIDs.txt"
-
-
 Data_File_List <- basename(Data_File)
 Experimental_Data_Dir <-  dirname(Data_File)
 setwd(Experimental_Data_Dir)
