@@ -442,12 +442,12 @@ collapse_BCs <- function(dataset) {
     ## Running through each parent barcode in our BCs_to_consolidate data frame
     for (i in BCs_to_consolidate$Barcodes) {
       ## Get the index of the parent barcode
-      bcs_within_edit <- grep(i,data$Barcodes)
+      bcs_within_edit <- grep(i,dataset$Barcodes)
       
       ## Get the index of each barcode in the <edit_dist_setting> group that was identified as
       #     a sequencing error due to failing the Pct_of_Parent_Threshold check.
       for (x in 1:nrow(BCs_within_edit_of_parent[[i]])) {
-        bcs_within_edit[length(bcs_within_edit)+1] <- grep(BCs_within_edit_of_parent[[i]]$Barcodes[x],data$Barcodes)
+        bcs_within_edit[length(bcs_within_edit)+1] <- grep(BCs_within_edit_of_parent[[i]]$Barcodes[x],dataset$Barcodes)
       }
       
       ## Assign a unique cluster ID to this list of barcodes
