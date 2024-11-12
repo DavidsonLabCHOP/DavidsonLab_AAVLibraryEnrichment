@@ -1,8 +1,9 @@
 # This script is set up to process Illumina AAV Amplicon Screening Data based on
 #     experiments performed by the Davidson Lab
 
-# NOTE on Nomenclature: The nucleic acid sequence encoding the random heptamer peptide 
-#     inserts in the PM-AAVs is referred to throughout this script using the term "Barcode"
+# NOTE: The nucleic acid sequence encoding the random hepatamer peptide inserts in
+#       the PM-AAVs is referred to throughout this script using the term 'Barcode'
+
 
 ################################
 ##  Loading Dependencies      ##
@@ -17,11 +18,13 @@ library(rvg)
 library(purrr)
 library(sys)
 library(reshape2)
-
+library(pheatmap)
 
 ## This toggle will cause the script to delete all the variables it creates once it has finished
-#     running and free up any unused memory. 
-Clear_Environment_Upon_Completion <- TRUE
+#     running and free up any unused memory.
+## CAUTION: Setting this variable to TRUE and then running this script to completion will
+#     delete all variables in your Environment (not just the ones created by this script).
+Clear_Environment_Upon_Completion <- FALSE
 
 
 ##############################################
@@ -39,8 +42,6 @@ Clear_Environment_Upon_Completion <- TRUE
 #     working directory to dirname(Data_File); so, the text file only needs to contain the file names, not full paths.
 Data_File <- "Full_Path_to_Text_File_Containing_List_of_Counts_Files_to_be_Analyzed"
 
-#Data_File <- "C:/Users/lewandowsb/OneDrive - Children's Hospital of Philadelphia/Desktop/Broad ICV Analysis/Round 2/Testset_Temp/SampleIDs.txt"
-
 Data_File_List <- basename(Data_File)
 Experimental_Data_Dir <-  dirname(Data_File)
 setwd(Experimental_Data_Dir)
@@ -55,7 +56,7 @@ setwd(Experimental_Data_Dir)
 #     This value indicates the minimum number of UMIs required for a given Barcode to be included 
 #     in enrichment analyses. This threshold will need to be determined empirically based on the
 #     distribution of values across a given set of screening datasets.
-UMI_Per_Barcode_Threshold <- 10
+UMI_Per_Barcode_Threshold <- 100
 
 
 
@@ -93,18 +94,45 @@ Percent_of_Parent_Threshold <- 1
 ## The string saved to the Save_File_Tag variable will be appended to the end of the standard names for each of the outputs
 #     saved by this script. You'll want to make this unique to each data set so you don't accidentally over-write
 #     the output of a previous run.
-Save_File_Tag = "Your_Experiment_ID"
+Save_File_Tag <-  "Your_Experiment_ID"
 
 ## This option will save *.rds objects containing the lists of UMI counts and Enrichment metric tables created by
 #     this script.
-Save_Results_Tables = TRUE
+Save_Results_Tables <-  TRUE
 
-## Change Save_Parent_Dir and/or Save_Dir to control where the results tables are saved. 
-#     Use getwd() to save in same location as the experimental files.
-#     Currently, the script creates and outputs to a folder called 'Results-<Save_File_Tag>' in Save_Parent_Dir 
-Save_Parent_Dir <- getwd()
-Save_Dir = paste0(Save_Parent_Dir,"/Results","-",Save_File_Tag)
-dir.create(Save_Dir, showWarnings = TRUE, recursive = FALSE, mode = "0777")
+## Toggle determining whether the code will save heatmaps showing the top performing AAV variants across the set of 
+#     experimental data being analyzed.  
+#  Separate heatmaps will be saved for the UMI Counts metric and the Enrichment metric. These plots will show data for the
+#     top <n_BCs_to_plot> barcodes (i.e., variants) as determined by average metric ranking across the experimental datasets.
+#  NOTE1a: If too many barcodes are plotted (problems tend to begin around 30+), the peptide sequences may overlap and be difficult to read
+#  NOTE1b: Similarly, if too many experimental datasets are present, their labels may also end up overlapping.
+#  NOTE2: Each dataset will be labeled using its filename (sans "-counts.txt"). If your filenames are too long, they will
+#             cause the resulting heatmap to be relatively small and some of the dataset names may get clipped and not
+#             display fully.
+Save_Region_Comparison_Heatmaps <- FALSE
+
+## Toggle determining whether the code will save PDFs containing bar plots of the top hits for each dataset. Separate bar plots will be 
+#     created for UMI Counts and Enrichment metrics.
+## NOTE: A 'UMI Counts - Top Hits' and 'Enrichment - Top Hits' bar plot will be created for EACH experimental dataset. So, if you
+#     have 30 datasets, this toggle will end up creating 60 PDF files.
+Save_Dataset_TopHits_Barplots <- FALSE
+
+## This variable determines how many barcodes (variants) are plotted in the analysis figures created if the 
+#     Save_Region_Comparison_Heatmaps and/or Save_Dataset_TopHits_Barplots are set to TRUE. 
+#     It is recommended to keep this variable at 30 or less to prevent overlap in peptide labeling.
+n_BCs_to_plot <- 25
+
+
+## The following code determines where the output of this script is stored
+## Change Save_Folder_Parent_Dir and/or Save_Dir to control where the results tables are saved. 
+#     Currently, the script creates and outputs to a folder called 'Results-<Save_File_Tag>' 
+#     which it creates in Save_Folder_Parent_Dir
+if (Save_Results_Tables | Save_Region_Comparison_Heatmaps | Save_Dataset_TopHits_Barplots) {
+  Save_Folder_Parent_Dir <- getwd()
+  Save_Dir = paste0(Save_Folder_Parent_Dir,"/Results","-",Save_File_Tag)
+  dir.create(Save_Dir, showWarnings = TRUE, recursive = FALSE, mode = "0777")
+}
+
 
 
 
@@ -124,7 +152,7 @@ AutoFind_Input_Files <- TRUE
 #    and then enter the file name of your input vector below. This file name must match the entry for the input vector
 #    data file in the list identified by the Data_File variable (defined above)
 # If AutoFind_Input_Files <- TRUE, then it doesn't matter what is entered here; it will be over-written later in the script.
-AAV_Input_Vector_ID <- 'Name of your input vector counts.txt file' 
+AAV_Input_Vector_ID <- 'Name_of_your_input_vector_counts_txt_file' 
 
 
 
@@ -195,14 +223,13 @@ names(SampleIDs) <- c("Names")
 
 
 ##################################################################
-## Create a function to import the dataset of interest        
-
+## Create a function to import datasets  
 importdatasets <- function(sample) {
   outputDF <- data.frame(read_table(sample, col_names = FALSE ))
   return(outputDF)
 }
 
-### Apply the importdatasets function to read in the datasets read from the text document
+### Apply the importdatasets function to import the datasets read from the text document
 #       indicated by the Data_File variable
 alldatasets=list()
 alldatasets <- lapply(SampleIDs$Names, FUN = importdatasets)
@@ -211,12 +238,6 @@ names(alldatasets) <- SampleIDs$Names
 for (i in c(1:length(alldatasets))) {
   colnames(alldatasets[[i]]) <- c("Barcodes","Peptide","RawCounts","UMICounts")
 }
-
-
-
-
-
-
 
 
 
@@ -246,9 +267,10 @@ Output_Notes[length(Output_Notes)+1] <- paste("AAV Input Vector File ID:",as.cha
 
 
 
-###############
-#############################
-#  Apply UMI_Per_Barcode Threshold filter
+
+#########################
+#################################################
+##  Apply UMI_Per_Barcode Threshold filter
 
 ## Filter datasets to remove barcode entries with UMI counts < UMI_Per_Barcode_Threshold
 alldatasets <- lapply(alldatasets, function(x) { subset(x, x$UMICounts >= UMI_Per_Barcode_Threshold) })
@@ -525,11 +547,13 @@ alldatasets[[AAV_Input_Vector_ID]] <- input_vector_dataset
 ##   Create a master key for all barcode sequences detected across all datasets     ####
 ########################################################################################
 
-# This code is going to create one monster data frame that combines all the individual data
-#     frames, stacking them one on top of the other. The goal is to create a reference for
-#     every barcode and peptide sequence observed across all the datasets for a given serotype.
-#     We can then use this "Barcode/Peptide" key to retrieve this information later on
-#     after we have processed the data in ways that could filter out some of this info.
+# This code creates a reference for every barcode and peptide sequence observed across all datasets.
+#     The reason this is necessary is because the same peptide sequence can be generated by multiple 
+#     nucleic acid sequences (i.e., barcodes). This 'Final_Key' creates a unique name for each
+#     peptide sequence (by appending #'s onto the duplicates). In addition to its analytical utility,
+#     this key also serves a practical purpose, as many plotting functions require unique values
+#     for categorical labels.
+# This key will be saved at the end of the script if Save_Results_Tables is set to TRUE.
 
 AAV_Final_Key <- do.call("rbind", alldatasets)
 AAV_Final_Key <- AAV_Final_Key[,c('Barcodes','Peptide')]
@@ -542,10 +566,6 @@ AAV_Final_Key["Peptide"] <- make.unique(AAV_Final_Key$Peptide)
 
 
 
-
-
-
-
 ######################################################################################
 ######################################################################################
 # 
@@ -553,13 +573,11 @@ AAV_Final_Key["Peptide"] <- make.unique(AAV_Final_Key$Peptide)
 #
 #   This function creates two sets of data frames for each dataset. One data frame contains
 #     UMICounts values for the experimental dataset and the input vector (for reference).
-#     The second data frame contains results of Enrichment metric calculations, and the
-#     UMIpct values for experimental and input vector data that are used in the Enrichment calculation.
+#     The second data frame contains Enrichment metric values, along with the percent_UMI
+#     values for experimental and input vector data that are used in the Enrichment calculation.
 #
 #######################################################################################
 #######################################################################################
-
-
 
 Create_Metric_Data_Frames <- function(input_vector, experimental_data) {
   
@@ -598,26 +616,9 @@ Create_Metric_Data_Frames <- function(input_vector, experimental_data) {
 
 
 
-
-#########################################################################################
-#########################################################################################
-##
-##    Create and Save AAV Metric Tables
-##
-#########################################################################
-
 ###################################
-# Run Datasets                    #
+##  Run Datasets                ###
 ###################################
-
-setwd(Save_Dir)
-
-# This variable is used in the Settings_And_Info output file
-saved_files <- array()
-saved_files[1] <- "Names of Saved Datafiles:"
-saved_files[2] <- "----------------------"
-
-
 
 ## We've already removed datasets with no data in them. However, the Create_Metric_Data_Frames function will 
 #     crash if there are datasets with only a single row of data. This code identifies and removes datasets with
@@ -632,41 +633,59 @@ for (i in length(alldatasets):1) {
 }
 
 
-
 ##  This counter is used to provide some minor progress update functionality
 counter <- 1
 
 ##  Simple wrapper function to run the Create_Metric_Data_Frames function with a
 #     command line output indicating the dataset being processed
-
 RunAAV_Samples <- function(exp_data) {
   print(paste0("Processing ",as.character(names(alldatasets)[counter])))
-  processed_data <- Create_Metric_Data_Frames(input_vector_dataset, 
-                                              exp_data)
-  
+  processed_data <- Create_Metric_Data_Frames(input_vector_dataset, exp_data)
   counter <<- counter + 1
   return(processed_data)
 }
 
 Metric_Tables <- lapply(alldatasets, RunAAV_Samples)
 
+Extract_Enrichment_Tables <- function(EnrichmentData) {
+  EnrichmentData <- data.frame(EnrichmentData[[1]])
+  return(EnrichmentData)
+}
+Extract_UMIcount_Tables <- function(UMIData) {
+  UMIData <- data.frame(UMIData[[2]])
+  return(UMIData)
+}
+
+Enrichment_Tables <- lapply(Metric_Tables, Extract_Enrichment_Tables)
+UMIcount_Tables <- lapply(Metric_Tables, Extract_UMIcount_Tables)
+
+
+
+
+
+#########################################################################################
+#########################################################################################
+##
+##    Output Save Options
+##    
+##    Note: Heatmaps and Bar Plots are only generated if Save_Region_Comparison_Heatmaps
+##          and/or Save_Dataset_TopHits_Barplots is set to TRUE. You will find the 
+##          functions to generate those plots under the relevant toggles below.
+##
+#########################################################################
+
+
+setwd(Save_Dir)
+
+# This variable is used in the Settings_And_Info output file
+saved_files <- array()
+saved_files[1] <- "Names of Saved Datafiles:"
+saved_files[2] <- "----------------------"
 
 
 ## Save the enrichment and UMI counts data frames created by RunAAV_Samples
 if (Save_Results_Tables) {
   
-  Extract_Enrichment_Tables <- function(EnrichmentData) {
-    EnrichmentData <- data.frame(EnrichmentData[[1]])
-    return(EnrichmentData)
-  }
-  Extract_UMIcount_Tables <- function(UMIData) {
-    UMIData <- data.frame(UMIData[[2]])
-    return(UMIData)
-  }
-  
-  Enrichment_Tables <- lapply(Metric_Tables, Extract_Enrichment_Tables)
-  UMIcount_Tables <- lapply(Metric_Tables, Extract_UMIcount_Tables)
-    
   saveRDS(Enrichment_Tables, file = paste0(as.character(Save_Dir),"/Enrichment_Tables-",Save_File_Tag,".rds"))
   saveRDS(UMIcount_Tables, file = paste0(as.character(Save_Dir),"/UMIcount_Tables-",Save_File_Tag,".rds"))
   saveRDS(AAV_Final_Key, file = paste0(as.character(Save_Dir),"/AAV_Final_Key-",Save_File_Tag,".rds"))
@@ -677,9 +696,192 @@ if (Save_Results_Tables) {
   
 }
 
+## Save region comparison heatmaps and/or top hits bar plots
+if (Save_Region_Comparison_Heatmaps | Save_Dataset_TopHits_Barplots) {
+  
+  ##############################################################################
+  ## This function combines metric data for the various experimental datasets
+  #     into a single data frame to be used for plotting
+  combine_datasets <- function(data_list, metric) {
+    
+    ## Removing the input vector from the list of experimental datasets
+    input_index <- grep(AAV_Input_Vector_ID, names(data_list))
+    data_list <- data_list[-input_index]
+    
+    ## Creating a master list of all barcodes present in experimental datasets.
+    #     Then cross-referencing it against the AAV_Final_Key data frame as a single
+    #     source of name resolution for duplicate peptide sequences.
+    combined_data <- do.call(rbind, data_list)
+    combined_data <- combined_data[!duplicated(combined_data$Barcodes),]
+    combined_data <- data.frame(Barcodes = combined_data$Barcodes)
+    combined_data <- left_join(combined_data, AAV_Final_Key, by='Barcodes')
+    
+    if (metric == 'Enrichment') {
+      for (i in 1:length(data_list)) {
+        combined_data <- left_join(combined_data, data_list[[i]][,c('Barcodes','Enrichment')], by='Barcodes')
+        colnames(combined_data)[ncol(combined_data)] <- gsub('-counts.txt','',names(data_list)[i])
+      }
+      combined_data[is.na(combined_data)] <- 0
+      combined_data$AVG <- rowMeans(combined_data[,c(3:ncol(combined_data))])
+      combined_data <- relocate(combined_data, AVG, .after = Peptide)
+      combined_data <- arrange(combined_data, desc(AVG))
+      return(combined_data)
+      
+    } else if (metric == 'UMICounts') {
+      for (i in 1:length(data_list)) {
+        combined_data <- left_join(combined_data, data_list[[i]][,c('Barcodes','UMI_Exp')], by='Barcodes')
+        colnames(combined_data)[ncol(combined_data)] <- gsub('-counts.txt','',names(data_list)[i])
+      }
+      combined_data[is.na(combined_data)] <- 0
+      combined_data$AVG <- rowMeans(combined_data[,c(3:ncol(combined_data))])
+      combined_data <- relocate(combined_data, AVG, .after = Peptide)
+      combined_data <- arrange(combined_data, desc(AVG))
+      return(combined_data)
+      
+    } else {
+      print('Invalid metric argument')
+      return(NULL)
+    }
+  }
+  
+  ## Heatmap plotting function
+  plot_region_comparison_heatmap <- function(Heat_input, n_BCs=30) {
+    if (nrow(Heat_input>20)) {
+      rowfontsize = 8
+    } else {
+      rowfontsize = 10
+    }
+    Heat_input[Heat_input==0] <- NA
+    find_data <- grep('AVG',colnames(Heat_input))
+    Heat_input <- dplyr::arrange(Heat_input, desc(AVG))
+    if (nrow(Heat_input) < n_BCs) {
+      n_BCs <- nrow(Heat_input)
+    }
+    Heat_input <- Heat_input[c(1:n_BCs),]
+    rownames(Heat_input) <- Heat_input$Peptide
+    
+    output_graph <- pheatmap(Heat_input[,c((find_data+1):ncol(Heat_input))],        
+                             labels_row = Heat_input$Peptide,
+                             cluster_cols = FALSE,
+                             #color = c.pal,
+                             cluster_rows = FALSE,
+                             dendrogram="none",
+                             trace="none",
+                             scale = "column",
+                             fontsize = rowfontsize,
+                             margins = c(2, 2),
+                             border_color=NA,
+                             na_col = "white",
+                             angle_col = 315,
+                             #gaps_row = 27,
+                             fontsize_row = rowfontsize)
+    return(output_graph)  
+  }
+  
+  ## Tophits barplot plotting function
+  plot_dataset_tophits_barplot <- function(input_dataset, metric_label, n_BCs=30) {
+    barplot_list <- list()
+    
+    ## Creating a barplot for each dataset present in the input_dataset
+    for (i in 4:ncol(input_dataset)) {
+      bar_data <- input_dataset[,c(1,i)]
+      colnames(bar_data) <- c('Barcodes','Metric')
+      bar_data <- dplyr::arrange(bar_data, desc(Metric))
+      
+      ## Pulling Peptide labels from the AAV_Final_Key to ensure consistent names are used
+      #     for any duplicate peptide sequences.
+      bar_data <- left_join(bar_data, AAV_Final_Key, by='Barcodes')
+      if (nrow(bar_data) < n_BCs) {
+        n_BCs <- nrow(bar_data)
+      }
+      bar_data <- bar_data[c(1:n_BCs),]
+      bar_data <- dplyr::arrange(bar_data, Metric)
+      bar_data$Peptide <- factor(bar_data$Peptide, levels = bar_data$Peptide)
+      
+      Bar_plot_output <- ggplot(bar_data, aes(x=Peptide, y=Metric)) + 
+        geom_col(aes(Metric,Peptide), color = "black", fill = "skyblue4", linewidth = 0.75) + 
+        theme_classic() +
+        scale_x_continuous(expand = c(0,0), position = "top") +
+        labs(title = as.character(colnames(input_dataset)[i])) +
+        theme(plot.title = element_text(hjust = 0.5, vjust = 3)) +
+        theme(axis.title.y=element_blank()) +
+        labs(x = as.character(metric_label))
+      
+      barplot_list[[colnames(input_dataset)[i]]] <- Bar_plot_output
+    }
+    return(barplot_list)
+  }
+  
+  ## Function to save heatmap as a PDF
+  save_heatmap_pdf <- function(x, filename, width=7, height=7) {
+    stopifnot(!missing(x))
+    stopifnot(!missing(filename))
+    pdf(filename, width=width, height=height)
+    grid::grid.newpage()
+    grid::grid.draw(x$gtable)
+    dev.off()
+  }
+  
+  ## Function to save bar plot as a PDF
+  save_barplot_pdf <- function(x, filename, width=7, height=7) {
+    stopifnot(!missing(x))
+    stopifnot(!missing(filename))
+    pdf(filename, width=width, height=height)
+    invisible(print(x))
+    dev.off()
+  }
+  
+  
+  ## Create data frames that will be used as input to the plotting functions
+  Enrichment_dataframe <- combine_datasets(Enrichment_Tables, 'Enrichment')
+  UMIcount_dataframe <- combine_datasets(UMIcount_Tables, 'UMICounts')
+  
+  
+  ## Create experimental dataset (region) comparison heatmaps
+  if (Save_Region_Comparison_Heatmaps) {
+    
+    ## Get plots from heatmap plotting functions
+    region_comparison_heatmap_plot_Enrichment <- plot_region_comparison_heatmap(Enrichment_dataframe, n_BCs_to_plot)
+    region_comparison_heatmap_plot_UMIs <- plot_region_comparison_heatmap(UMIcount_dataframe, n_BCs_to_plot)
+    
+    ## Save plots as PDFs
+    save_filename <- paste0(Save_Dir,'/RegionComp-Enrichment-Heatmap-',Save_File_Tag,'.pdf')
+    save_heatmap_pdf(region_comparison_heatmap_plot_Enrichment, save_filename)
+    saved_files[length(saved_files)+1] <- save_filename
+    
+    save_filename <- paste0(Save_Dir,'/RegionComp-UMIs-Heatmap-',Save_File_Tag,'.pdf')
+    save_heatmap_pdf(region_comparison_heatmap_plot_UMIs, save_filename)
+    saved_files[length(saved_files)+1] <- save_filename
+  }
+  
+  ## Create top hit bar plot for each experimental dataset
+  if (Save_Dataset_TopHits_Barplots) {
+    
+    ## The barplot function outputs a list of plots, one for each dataset
+    tophit_barplots_list_Enrichment <- plot_dataset_tophits_barplot(Enrichment_dataframe, 'Enrichment', n_BCs_to_plot)
+    tophit_barplots_list_UMIs <- plot_dataset_tophits_barplot(UMIcount_dataframe, 'UMI Counts', n_BCs_to_plot)
+    
+    ## Output the lists of bar plots as PDFs
+    for (i in 1:length(tophit_barplots_list_Enrichment)) {
+      save_filename <- paste0(Save_Dir,'/TopHits-Enrichment-',names(tophit_barplots_list_Enrichment)[i],'.pdf')
+      save_barplot_pdf(tophit_barplots_list_Enrichment[[i]], save_filename)
+      saved_files[length(saved_files)+1] <- save_filename
+    }
+    for (i in 1:length(tophit_barplots_list_UMIs)) {
+      save_filename <- paste0(Save_Dir,'/TopHits-UMIs-',names(tophit_barplots_list_UMIs)[i],'.pdf')
+      save_barplot_pdf(tophit_barplots_list_UMIs[[i]], save_filename)
+      saved_files[length(saved_files)+1] <- save_filename
+    }
+  }
+}
 
 
 
+
+
+################################################################################
+##  Generate Seetings_And_Info text file containing run information          ###
+################################################################################
 
 General_Output_Filename <- paste0("Settings_And_Info-",Save_File_Tag,".txt")
 
@@ -698,7 +900,7 @@ print(paste("Save Directory:", as.character(Save_Dir)))
 print(paste("Save File Identifier:",Save_File_Tag))
 print("---------------------------------------------------------------------------------------------")
 print("---------------------------------------------------------------------------------------------")
-print("Normalization and Filtering Parameters")
+print("Processing and Filtering Parameters")
 print("--------------------------------------")
 print(paste("UMI_Per_Barcode_Threshold =",as.character(UMI_Per_Barcode_Threshold)))
 print(paste("Collapse_Barcodes =",Collapse_Barcodes))
@@ -713,6 +915,11 @@ if (!AutoFind_Input_Files) {
   print(paste("AAV_Input_Vector_ID:",AAV_Input_Vector_ID))
 }
 print(paste("Save_Results_Tables =", Save_Results_Tables))
+print(paste("Save_Region_Comparison_Heatmaps =", Save_Region_Comparison_Heatmaps))
+print(paste("Save_Dataset_TopHits_Barplots =", Save_Dataset_TopHits_Barplots))
+if (Save_Region_Comparison_Heatmaps | Save_Dataset_TopHits_Barplots) {
+  print(paste("Number_of_BCs_to_Plot =", n_BCs_to_plot))
+}
 print("---------------------------------------------------------------------------------------------")
 print("---------------------------------------------------------------------------------------------")
 print("Files Analyzed:")
@@ -740,14 +947,8 @@ for (i in 1:length(Output_Notes)) {
 sink(file = NULL)
 
 
-General_Output_Filename <- paste0(Save_File_Tag,"-AllFiles.txt")
 
-sink(file = General_Output_Filename)
-for (i in 3:length(saved_files)) {
-  print(saved_files[i])  
-}
-sink(file = NULL)
-
-
-
+## CAUTION: Running this line of code (assuming Clear_Environment_Upon_Completion = TRUE) will
+#     delete all variables in your Environment (not just the ones created by this script).
 if (Clear_Environment_Upon_Completion) {rm(list=ls()); gc()}
+
