@@ -2,7 +2,7 @@
 Tools for processing AAV screening data from Illumina amplicon sequencing
 
 This repository contains a series of bash/python/R tools for analyzing Illumina next-generation amplicon sequencing results from peptide-modified AAV screening experiments.
-The code is designed to analyze data from amplicons that contain heptamer (21 base pair) variable regions. Proprely formed amplicons in the Illumina FASTQ results will identified using perfect string matches. This requires that the variable region, two flanking sequences, and a Unique Molecular Identifier sequence (UMI) be at fixed locations in the amplicon. All of these sequences must be located on the same Read in the Illumina data.
+The code is designed to analyze data from amplicons that contain heptamer (21 base pair) variable regions. Properly formed amplicons in the Illumina FASTQ results will identified using perfect string matches. This requires that the variable region, two flanking sequences, and a Unique Molecular Identifier sequence (UMI) be at fixed locations in the amplicon. All of these sequences must be located on the same Read in the Illumina data.
 
 ---------------------
 AMPLICON FASTQ PARSER
