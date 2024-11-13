@@ -31,7 +31,7 @@ This script is designed to be run from a Linux/UNIX Shell script wrapper. Before
 6) flank_2_sequence - A string defining the expected nucleic acid sequence in Flank2
 7) peptide_modification_start_index - The position of the first nucleic acid in the heptamer peptide modification
 8) UMI_start_index - The position of the first nucleic acid in the UMI
-9) UMI_end_index = The position of the last nucleic acid in the UMI
+9) UMI_end_index - The position of the last nucleic acid in the UMI
 
 This script will output a <original_filename>-counts.txt file for each Illumina FASTQ analyzed. These counts files will contain raw read counts and UMI collapsed read counts for each unique variable region sequence detected in the Illumina FASTQ
 
