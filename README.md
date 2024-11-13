@@ -43,6 +43,7 @@ This folder contains an R script that analyzes the *counts.txt files output from
 AAV_Screening_Data_Analysis_Tool.R
 ----------------------------------
 Complete instructions for running this tool along with explanations of all available options and outputs can be found in the annotations contained within the script.
+
 The only input required to run this analysis tool is a text file (UTF-8 encoded) containing the list of *-counts.txt files to be analyzed. This text file must be located in the same folder as the *-counts.txt files. Also note, one of the *-counts.txt files must contain data for the input virus. Input virus data is required to calculate the Enrichment metric.
 
 
