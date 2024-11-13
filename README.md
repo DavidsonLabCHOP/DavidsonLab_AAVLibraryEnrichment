@@ -33,6 +33,20 @@ This script is designed to be run from a Linux/UNIX Shell script wrapper. Before
 8) UMI_start_index - The position of the first nucleic acid in the UMI
 9) UMI_end_index = The position of the last nucleic acid in the UMI
 
+This script will output a <original_filename>-counts.txt file for each Illumina FASTQ analyzed. These counts files will contain raw read counts and UMI collapsed read counts for each unique variable region sequence detected in the Illumina FASTQ
+
+---------------------------------------
+VARIANT_PERFORMANCE_ANALYSIS
+---------------------------------------
+This folder contains an R script that analyzes the *counts.txt files output from the Amplicon_FASTQ_Parser tools to evaluate capsid variant performance using two metrics: UMI counts and Enrichment.
+
+AAV_Screening_Data_Analysis_Tool.R
+----------------------------------
+Complete instructions for running this tool along with explanations of all available options and outputs can be found in the annotations contained within the script.
+The only input required to run this analysis tool is a text file (UTF-8 encoded) containing the list of *-counts.txt files to be analyzed. This text file must be located in the same folder as the *-counts.txt files. Also note, one of the *-counts.txt files must contain data for the input virus. Input virus data is required to calculate the Enrichment metric.
+
+
+
 
 
 
