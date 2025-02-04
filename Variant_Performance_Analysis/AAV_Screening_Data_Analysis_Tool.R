@@ -12,12 +12,6 @@ library(tidyverse)
 library(dplyr)
 library(ggplot2)
 library(readr)
-library(scales)
-library(officer)
-library(rvg)
-library(purrr)
-library(sys)
-library(reshape2)
 library(pheatmap)
 
 ## This toggle will cause the script to delete all the variables it creates once it has finished
@@ -887,7 +881,7 @@ General_Output_Filename <- paste0("Settings_And_Info-",Save_File_Tag,".txt")
 
 sink(file = General_Output_Filename)
 
-print("AAV_Screening_Data_Analysis_Tool.R - Setting and Information")
+print("AAV_Screening_Data_Analysis_Tool.R - Settings and Information")
 print("Run on:")
 Sys.time()
 print("---------------------------------------------------------------------------------------------")
