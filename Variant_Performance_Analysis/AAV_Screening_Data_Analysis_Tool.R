@@ -458,8 +458,8 @@ collapse_BCs <- function(dataset) {
     ## Next, the indices for each set of parent barcode / sequencing error barcodes are identified
     #     and assigned their own unique cluster value (cluster_ID). The highest cluster value in
     #     the dataset at this point = nrow(dataset). So, we'll start with the value:
-    #     nrow(data) + 1 to begin labeling our parent / seq error clusters.
-    cluster_ID <- nrow(data) + 1
+    #     nrow(dataset) + 1 to begin labeling our parent / seq error clusters.
+    cluster_ID <- nrow(dataset) + 1
     
     ## Running through each parent barcode in our BCs_to_consolidate data frame
     for (i in BCs_to_consolidate$Barcodes) {
