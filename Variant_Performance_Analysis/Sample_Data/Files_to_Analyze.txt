@@ -1,0 +1,13 @@
+InputVirus-SampleData-AAVx-counts.txt
+Region10_SampleData_AAVx-counts.txt
+Region11_SampleData_AAVx-counts.txt
+Region12_SampleData_AAVx-counts.txt
+Region1_SampleData_AAVx-counts.txt
+Region2_SampleData_AAVx-counts.txt
+Region3_SampleData_AAVx-counts.txt
+Region4_SampleData_AAVx-counts.txt
+Region5_SampleData_AAVx-counts.txt
+Region6_SampleData_AAVx-counts.txt
+Region7_SampleData_AAVx-counts.txt
+Region8_SampleData_AAVx-counts.txt
+Region9_SampleData_AAVx-counts.txt

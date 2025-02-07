@@ -1,0 +1,8 @@
+These sample data files were created to match the output of the AAV_Parsing_Tool_Wrapper.sh + AAV_Barcode_Parsing_Tool.py to
+provide example files that can be used to run the R Variant_Performance_Analysis pipeline.
+
+These files are provided as an example of properly formated data to enable users
+to test the code and to help troubleshoot any difficulties users may have processing their own data.
+
+The data analyzed in the article associated with this Github is available from the authors upon reasonable request and
+will be made available in accordance with The Children’s Hospital of Philadelphia’s institutional policies.
